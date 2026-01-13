@@ -92,6 +92,60 @@ function init() {
     isTypewriterMode = !isTypewriterMode;
     typewriterModeBtn.classList.toggle('active', isTypewriterMode);
   });
+
+  // Sync Logic
+  syncUploadBtn.addEventListener('click', async () => {
+    const docs = storage.getDocuments();
+    if (docs.length === 0) return alert('No documents to sync.');
+    
+    syncUploadBtn.disabled = true;
+    syncUploadBtn.classList.add('loading');
+    
+    try {
+      const code = await uploadProject(docs);
+      syncCodeInput.value = code;
+      alert(`Project Uploaded! Your Code: ${code}\nKeep this code to sync on other devices.`);
+    } catch (err) {
+      alert('Upload failed. Please try again.');
+    } finally {
+      syncUploadBtn.disabled = false;
+      syncUploadBtn.classList.remove('loading');
+    }
+  });
+
+  syncDownloadBtn.addEventListener('click', async () => {
+    const code = syncCodeInput.value.trim();
+    if (!code) return alert('Please enter a project code.');
+
+    if (!confirm('This will merge cloud documents with your current ones. Continue?')) return;
+
+    syncDownloadBtn.disabled = true;
+    syncDownloadBtn.classList.add('loading');
+
+    try {
+      const cloudDocs = await downloadProject(code);
+      const localDocs = storage.getDocuments();
+      
+      // Simple merge by ID
+      const merged = [...cloudDocs];
+      localDocs.forEach(local => {
+        if (!merged.find(m => m.id === local.id)) {
+          merged.push(local);
+        }
+      });
+
+      storage.saveDocuments(merged);
+      renderDocList(merged);
+      if (merged.length > 0) loadDocument(merged[0].id);
+      
+      alert('Sync Successful!');
+    } catch (err) {
+      alert('Download failed. Check your code and connection.');
+    } finally {
+      syncDownloadBtn.disabled = false;
+      syncDownloadBtn.classList.remove('loading');
+    }
+  });
 }
 
 /**
