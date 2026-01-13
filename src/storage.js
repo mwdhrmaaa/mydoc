@@ -11,10 +11,20 @@ export const storage = {
     return data ? JSON.parse(data) : [];
   },
 
+  /**
+   * Persists the provided list of documents to LocalStorage.
+   * @param {Array} documents - The list of documents to save.
+   */
   saveDocuments(documents) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(documents));
   },
 
+  /**
+   * Creates a new document with an optional title and content.
+   * @param {string} title - Initial title.
+   * @param {string} content - Initial content.
+   * @returns {Object} The newly created document object.
+   */
   createDocument(title = '', content = '') {
     const docs = this.getDocuments();
     const newDoc = {
