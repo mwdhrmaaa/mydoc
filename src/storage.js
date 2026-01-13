@@ -39,6 +39,12 @@ export const storage = {
     return newDoc;
   },
 
+  /**
+   * Updates an existing document's properties by its ID.
+   * @param {string} id - The unique ID of the document.
+   * @param {Object} updates - The new properties to apply.
+   * @returns {Object|null} The updated document object or null if not found.
+   */
   updateDocument(id, updates) {
     const docs = this.getDocuments();
     const index = docs.findIndex(d => d.id === id);
