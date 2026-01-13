@@ -23,6 +23,9 @@ const focusModeBtn = document.getElementById('focus-mode-btn');
 const typewriterModeBtn = document.getElementById('typewriter-mode-btn');
 
 // Initialize
+/**
+ * Initializes the application, loads documents, and sets up event listeners.
+ */
 function init() {
   const docs = storage.getDocuments();
   renderDocList(docs);
@@ -85,6 +88,10 @@ function init() {
   });
 }
 
+/**
+ * Renders the list of documents in the sidebar.
+ * @param {Array} docs - Array of document objects to display.
+ */
 function renderDocList(docs) {
   docList.innerHTML = '';
   docs.forEach(doc => {
