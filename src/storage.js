@@ -60,6 +60,10 @@ export const storage = {
     return null;
   },
 
+  /**
+   * Removes a document from LocalStorage by its ID.
+   * @param {string} id - The unique ID of the document to delete.
+   */
   deleteDocument(id) {
     const docs = this.getDocuments();
     const filtered = docs.filter(d => d.id !== id);
