@@ -1,4 +1,5 @@
 import { storage } from './storage.js';
+import { uploadProject, downloadProject } from './sync.js';
 
 let currentDocId = null; // Currently active document ID
 let saveTimeout = null; // Timeout for auto-save debouncing
@@ -21,6 +22,11 @@ const sidebar = document.getElementById('sidebar');
 const toggleSidebarBtn = document.getElementById('toggle-sidebar');
 const focusModeBtn = document.getElementById('focus-mode-btn');
 const typewriterModeBtn = document.getElementById('typewriter-mode-btn');
+
+// Sync Elements
+const syncCodeInput = document.getElementById('sync-code');
+const syncUploadBtn = document.getElementById('sync-upload-btn');
+const syncDownloadBtn = document.getElementById('sync-download-btn');
 
 // Initialize
 /**
