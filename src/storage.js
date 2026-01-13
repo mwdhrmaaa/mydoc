@@ -2,6 +2,10 @@
 const STORAGE_KEY = 'mydoc_documents';
 
 export const storage = {
+  /**
+   * Retrieves all document objects from LocalStorage.
+   * @returns {Array} List of document objects.
+   */
   getDocuments() {
     const data = localStorage.getItem(STORAGE_KEY);
     return data ? JSON.parse(data) : [];
