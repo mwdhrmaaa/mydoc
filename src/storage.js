@@ -1,3 +1,4 @@
+// Key used for persisting document data in the browser's LocalStorage.
 const STORAGE_KEY = 'mydoc_documents';
 
 export const storage = {
