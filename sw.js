@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mydoc-v1';
+const CACHE_NAME = 'mydoc-v2';
 const ASSETS = [
   './',
   './index.html',
