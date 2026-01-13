@@ -1,0 +1,17 @@
+{
+  "name": "MyDoc | Writing Suite",
+  "short_name": "MyDoc",
+  "description": "Premium, distraction-free writing software for creative minds.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
