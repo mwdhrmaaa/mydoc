@@ -107,6 +107,10 @@ function renderDocList(docs) {
   docCountSpan.textContent = `${docs.length} document${docs.length !== 1 ? 's' : ''}`;
 }
 
+/**
+ * Loads a specific document into the editor.
+ * @param {string} id - The unique ID of the document to load.
+ */
 function loadDocument(id) {
   const docs = storage.getDocuments();
   const doc = docs.find(d => d.id === id);
