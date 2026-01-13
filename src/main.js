@@ -2,6 +2,8 @@ import { storage } from './storage.js';
 
 let currentDocId = null;
 let saveTimeout = null;
+let isFocusMode = false;
+let isTypewriterMode = false;
 
 // DOM Elements
 const docList = document.getElementById('doc-list');
@@ -12,8 +14,13 @@ const deleteDocBtn = document.getElementById('delete-doc-btn');
 const exportBtn = document.getElementById('export-btn');
 const wordCountSpan = document.getElementById('word-count');
 const charCountSpan = document.getElementById('char-count');
+const readingTimeSpan = document.getElementById('reading-time');
 const saveStatus = document.getElementById('save-status');
 const docCountSpan = document.getElementById('doc-count');
+const sidebar = document.getElementById('sidebar');
+const toggleSidebarBtn = document.getElementById('toggle-sidebar');
+const focusModeBtn = document.getElementById('focus-mode-btn');
+const typewriterModeBtn = document.getElementById('typewriter-mode-btn');
 
 // Initialize
 function init() {
@@ -32,9 +39,26 @@ function init() {
   editor.addEventListener('input', () => {
     updateStats();
     debounceSave();
+    if (isTypewriterMode) centerCursor();
   });
+  
   deleteDocBtn.addEventListener('click', deleteCurrentDocument);
   exportBtn.addEventListener('click', exportToTxt);
+  
+  toggleSidebarBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+  });
+
+  focusModeBtn.addEventListener('click', () => {
+    isFocusMode = !isFocusMode;
+    document.body.classList.toggle('focus-mode', isFocusMode);
+    focusModeBtn.classList.toggle('active', isFocusMode);
+  });
+
+  typewriterModeBtn.addEventListener('click', () => {
+    isTypewriterMode = !isTypewriterMode;
+    typewriterModeBtn.classList.toggle('active', isTypewriterMode);
+  });
 }
 
 function renderDocList(docs) {
@@ -113,6 +137,24 @@ function updateStats() {
   
   wordCountSpan.textContent = `${words} word${words !== 1 ? 's' : ''}`;
   charCountSpan.textContent = `${chars} character${chars !== 1 ? 's' : ''}`;
+  
+  // Calculate reading time (avg 200 wpm)
+  const minutes = Math.ceil(words / 200);
+  readingTimeSpan.textContent = `${minutes} min read`;
+}
+
+function centerCursor() {
+  const wrapper = document.querySelector('.editor-content-wrapper');
+  const lineHeight = parseInt(window.getComputedStyle(editor).lineHeight);
+  const cursorPosition = editor.selectionStart;
+  const textBeforeCursor = editor.value.substring(0, cursorPosition);
+  const linesBeforeCursor = textBeforeCursor.split('\n').length;
+  
+  const targetScroll = (linesBeforeCursor * lineHeight) - (wrapper.clientHeight / 2);
+  wrapper.scrollTo({
+    top: targetScroll,
+    behavior: 'smooth'
+  });
 }
 
 function exportToTxt() {
