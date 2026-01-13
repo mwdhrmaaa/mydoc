@@ -33,6 +33,13 @@ function init() {
     createNewDocument();
   }
 
+  // Register Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+      .then(() => console.log('Service Worker Registered'))
+      .catch((err) => console.log('Service Worker Failed:', err));
+  }
+
   // Event Listeners
   newDocBtn.addEventListener('click', createNewDocument);
   docTitleInput.addEventListener('input', () => debounceSave());
@@ -45,8 +52,25 @@ function init() {
   deleteDocBtn.addEventListener('click', deleteCurrentDocument);
   exportBtn.addEventListener('click', exportToTxt);
   
-  toggleSidebarBtn.addEventListener('click', () => {
+  toggleSidebarBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
     sidebar.classList.toggle('collapsed');
+  });
+
+  // Close sidebar on item click for mobile
+  docList.addEventListener('click', (e) => {
+    if (window.innerWidth <= 768 && e.target.closest('.doc-item')) {
+      sidebar.classList.add('collapsed');
+    }
+  });
+
+  // Close sidebar clicking outside on mobile
+  document.addEventListener('click', (e) => {
+    if (window.innerWidth <= 768 && 
+        !sidebar.classList.contains('collapsed') && 
+        !sidebar.contains(e.target)) {
+      sidebar.classList.add('collapsed');
+    }
   });
 
   focusModeBtn.addEventListener('click', () => {
