@@ -1,0 +1,274 @@
+:root {
+  --bg-color: #0d0d0d;
+  --sidebar-bg: #151515;
+  --text-primary: #e0e0e0;
+  --text-secondary: #888888;
+  --accent-color: #ff3e3e; /* Modern Red */
+  --accent-glow: rgba(255, 62, 62, 0.3);
+  --border-color: #2a2a2a;
+  --hover-bg: #1f1f1f;
+  --font-main: 'Inter', sans-serif;
+  --font-header: 'Outfit', sans-serif;
+  --transition-speed: 0.3s;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  overflow: hidden;
+}
+
+#app {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Sidebar Styling */
+.sidebar {
+  width: 300px;
+  background-color: var(--sidebar-bg);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  transition: width var(--transition-speed);
+}
+
+.sidebar-header {
+  padding: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sidebar-header h1 {
+  font-family: var(--font-header);
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.btn-primary {
+  background-color: var(--accent-color);
+  color: white;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-primary:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 15px var(--accent-glow);
+}
+
+.doc-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 12px;
+}
+
+.doc-item {
+  padding: 12px 16px;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color var(--transition-speed);
+  position: relative;
+}
+
+.doc-item:hover {
+  background-color: var(--hover-bg);
+}
+
+.doc-item.active {
+  background-color: var(--hover-bg);
+  color: var(--accent-color);
+  font-weight: 500;
+}
+
+.doc-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 16px;
+  background-color: var(--accent-color);
+  border-radius: 0 4px 4px 0;
+}
+
+.doc-item-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.9rem;
+}
+
+.doc-item-date {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  display: block;
+  margin-top: 4px;
+}
+
+.sidebar-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+/* Editor Styling */
+.editor-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 40px 60px;
+  position: relative;
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 40px;
+}
+
+.doc-title-input {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: var(--font-header);
+  font-size: 2.5rem;
+  font-weight: 700;
+  width: 70%;
+  outline: none;
+}
+
+.doc-title-input::placeholder {
+  color: #2a2a2a;
+}
+
+.editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#save-status {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+.btn-icon {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+  background-color: var(--hover-bg);
+}
+
+.btn-icon.secondary:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.editor-content-wrapper {
+  flex: 1;
+  width: 100%;
+}
+
+#editor {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  font-size: 1.15rem;
+  line-height: 1.8;
+  resize: none;
+  outline: none;
+}
+
+.editor-footer {
+  padding: 24px 0;
+  display: flex;
+  justify-content: flex-end;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dot {
+  opacity: 0.5;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 0;
+    overflow: hidden;
+  }
+  
+  .editor-container {
+    padding: 24px;
+  }
+  
+  .doc-title-input {
+    font-size: 1.8rem;
+  }
+}

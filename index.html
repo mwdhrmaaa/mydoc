@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyDoc | Distraction-Free Writing</title>
+  <meta name="description" content="A premium writing software for short stories, poems, and creative documents.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body class="dark-theme">
+  <div id="app">
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <h1>MyDoc</h1>
+        <button id="new-doc-btn" class="btn-primary" title="New Document">+</button>
+      </div>
+      <div id="doc-list" class="doc-list">
+        <!-- Documents will be injected here -->
+      </div>
+      <div class="sidebar-footer">
+        <span id="doc-count">0 documents</span>
+      </div>
+    </aside>
+
+    <main id="editor-container" class="editor-container">
+      <header id="editor-header" class="editor-header">
+        <input type="text" id="doc-title" placeholder="Untitled Story..." class="doc-title-input">
+        <div class="editor-actions">
+          <span id="save-status">Saved</span>
+          <button id="delete-doc-btn" class="btn-icon secondary" title="Delete Document">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+          </button>
+          <button id="export-btn" class="btn-icon" title="Export to TXT">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          </button>
+        </div>
+      </header>
+      
+      <div class="editor-content-wrapper">
+        <textarea id="editor" placeholder="Start writing something beautiful..." spellcheck="false"></textarea>
+      </div>
+
+      <footer class="editor-footer">
+        <div class="stats">
+          <span id="word-count">0 words</span>
+          <span class="dot">·</span>
+          <span id="char-count">0 characters</span>
+        </div>
+      </footer>
+    </main>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
