@@ -1,9 +1,9 @@
 import { storage } from './storage.js';
 
-let currentDocId = null;
-let saveTimeout = null;
-let isFocusMode = false;
-let isTypewriterMode = false;
+let currentDocId = null; // Currently active document ID
+let saveTimeout = null; // Timeout for auto-save debouncing
+let isFocusMode = false; // Whether focus mode is active
+let isTypewriterMode = false; // Whether typewriter mode is active
 
 // DOM Elements
 const docList = document.getElementById('doc-list');
