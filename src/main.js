@@ -212,18 +212,28 @@ function init() {
 
   const syncCopyLinkBtn = document.getElementById('sync-copy-link-btn');
   syncCopyLinkBtn.addEventListener('click', () => {
-    const code = syncCodeInput.value.trim();
+    const input = document.getElementById('sync-code');
+    let code = input ? input.value.trim() : '';
+    
+    // Fallback to last successful code if input is empty
+    if (!code || code.length !== 6) {
+      code = getLastSyncCode() || '';
+    }
+
     if (!code || code.length !== 6) {
       showToast('No valid sync code to copy.', 'warning');
       return;
     }
     
-    // Construct link (assuming same origin)
+    code = code.toUpperCase();
+    if (input) input.value = code;
+
+    // Construct link
     const link = `${window.location.origin}${window.location.pathname}?sync=${code}`;
     
     if (navigator.clipboard) {
       navigator.clipboard.writeText(link)
-        .then(() => showToast('Sync link copied to clipboard!', 'success'))
+        .then(() => showToast(`✓ Sync link copied: ${code}`, 'success'))
         .catch(() => showToast('Failed to copy link.', 'error'));
     }
   });
