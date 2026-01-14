@@ -209,6 +209,26 @@ function init() {
       syncDownloadBtn.classList.remove('loading');
     }
   });
+
+  const syncCopyLinkBtn = document.getElementById('sync-copy-link-btn');
+  syncCopyLinkBtn.addEventListener('click', () => {
+    const code = syncCodeInput.value.trim();
+    if (!code || code.length !== 6) {
+      showToast('No valid sync code to copy.', 'warning');
+      return;
+    }
+    
+    // Construct link (assuming same origin)
+    const link = `${window.location.origin}${window.location.pathname}?sync=${code}`;
+    
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(link)
+        .then(() => showToast('Sync link copied to clipboard!', 'success'))
+        .catch(() => showToast('Failed to copy link.', 'error'));
+    }
+  });
+
+  handleDeepLink();
 }
 
 /**
@@ -299,6 +319,67 @@ function updateStats() {
   // Calculate reading time (avg 200 wpm)
   const minutes = Math.ceil(words / 200);
   readingTimeSpan.textContent = `${minutes} min read`;
+}
+
+/**
+ * Handles automatic sync from URL parameter ?sync=CODE
+ */
+async function handleDeepLink() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const syncCode = urlParams.get('sync');
+  
+  if (syncCode && syncCode.length === 6) {
+    const code = syncCode.toUpperCase();
+    const syncCodeInput = document.getElementById('sync-code');
+    const syncDownloadBtn = document.getElementById('sync-download-btn');
+    
+    if (syncCodeInput) syncCodeInput.value = code;
+    
+    // Smooth delay to let the app load first
+    setTimeout(async () => {
+      showToast(`Auto-syncing from link: ${code}...`, 'info');
+      try {
+        if (syncDownloadBtn) {
+          syncDownloadBtn.disabled = true;
+          syncDownloadBtn.classList.add('loading');
+        }
+
+        const cloudDocs = await downloadProject(code);
+        
+        if (cloudDocs && cloudDocs.length > 0) {
+          const localDocs = storage.getDocuments();
+          
+          // Simple merge by ID
+          const merged = [...cloudDocs];
+          localDocs.forEach(local => {
+            if (!merged.find(m => m.id === local.id)) {
+              merged.push(local);
+            }
+          });
+          
+          storage.saveDocuments(merged);
+          saveLastSyncCode(code);
+          renderDocList(merged);
+          loadDocument(merged[0].id);
+          
+          showToast(`✓ Auto-synced ${cloudDocs.length} document(s)!`, 'success');
+          
+          // Clear query param from URL without refreshing
+          const newUrl = window.location.origin + window.location.pathname;
+          window.history.replaceState({}, document.title, newUrl);
+        } else {
+          showToast('Project is empty or invalid.', 'warning');
+        }
+      } catch (error) {
+        showToast(error.message, 'error');
+      } finally {
+        if (syncDownloadBtn) {
+          syncDownloadBtn.disabled = false;
+          syncDownloadBtn.classList.remove('loading');
+        }
+      }
+    }, 1000);
+  }
 }
 
 function centerCursor() {
