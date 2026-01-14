@@ -67,7 +67,11 @@ export async function uploadProject(documents) {
     return await uploadToNPoint(payload);
   } catch (error) {
     console.error('All upload methods failed:', error);
-    throw new Error('Upload failed. Please check your internet connection.');
+    // Provide more specific error message based on the actual error
+    const errorMessage = error.message.includes('npoint error') 
+      ? `Cloud API Error: ${error.message}. The files might be too large for the free server.`
+      : `Upload failed: ${error.message}. Please check your connection or try again later.`;
+    throw new Error(errorMessage);
   }
 }
 
