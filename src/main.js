@@ -126,38 +126,35 @@ function init() {
   });
 
   // Sync Logic
-  syncUploadBtn.addEventListener('click', async () => {
+  async function triggerAutoSync(silent = false) {
     const docs = storage.getDocuments();
-    if (docs.length === 0) {
-      showToast('No documents to sync.', 'warning');
-      return;
-    }
+    if (docs.length === 0) return;
     
     syncUploadBtn.disabled = true;
     syncUploadBtn.classList.add('loading');
-    showToast('Uploading project...', 'info');
+    if (!silent) showToast('Uploading project...', 'info');
     
     try {
       const code = await uploadProject(docs);
       syncCodeInput.value = code;
       saveLastSyncCode(code);
       
-      showToast(`✓ Uploaded! Code: ${code}`, 'success');
+      if (!silent) showToast(`✓ Uploaded! Code: ${code}`, 'success');
       
-      // Copy to clipboard if available
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(code)
-          .then(() => showToast('Code copied to clipboard!', 'info'))
-          .catch(() => {});
+      // Auto-copy to clipboard only if manual or specifically needed
+      if (!silent && navigator.clipboard) {
+        navigator.clipboard.writeText(code).catch(() => {});
       }
     } catch (err) {
-      showToast(err.message || 'Upload failed. Please try again.', 'error');
-      console.error('Upload error:', err);
+      if (!silent) showToast(err.message || 'Upload failed.', 'error');
+      console.error('Auto-sync error:', err);
     } finally {
       syncUploadBtn.disabled = false;
       syncUploadBtn.classList.remove('loading');
     }
-  });
+  }
+
+  syncUploadBtn.addEventListener('click', () => triggerAutoSync(false));
 
   syncDownloadBtn.addEventListener('click', async () => {
     const code = syncCodeInput.value.trim();
@@ -283,6 +280,12 @@ function createNewDocument() {
   currentDocId = newDoc.id;
   loadDocument(newDoc.id);
   docTitleInput.focus();
+  
+  // Auto-sync after short delay to ensure doc is saved
+  setTimeout(() => {
+    const syncUploadBtn = document.getElementById('sync-upload-btn');
+    if (syncUploadBtn) syncUploadBtn.click(); // Simple way to trigger the logic
+  }, 500);
 }
 
 function deleteCurrentDocument() {
