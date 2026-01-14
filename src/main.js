@@ -138,6 +138,7 @@ function init() {
       const code = await uploadProject(docs);
       syncCodeInput.value = code;
       saveLastSyncCode(code);
+      updateSyncLinkField(code); // Update link field
       
       if (!silent) showToast(`✓ Uploaded! Code: ${code}`, 'success');
       
@@ -194,6 +195,7 @@ function init() {
 
       storage.saveDocuments(merged);
       saveLastSyncCode(code);
+      updateSyncLinkField(code); // Update link field
       renderDocList(merged);
       if (merged.length > 0) loadDocument(merged[0].id);
       
@@ -207,33 +209,44 @@ function init() {
     }
   });
 
+  syncCodeInput.addEventListener('input', (e) => {
+    updateSyncLinkField(e.target.value);
+  });
+
   const syncCopyLinkBtn = document.getElementById('sync-copy-link-btn');
   syncCopyLinkBtn.addEventListener('click', () => {
-    const input = document.getElementById('sync-code');
-    let code = input ? input.value.trim() : '';
+    const linkField = document.getElementById('sync-link-field');
+    const link = linkField ? linkField.value : '';
     
-    // Fallback to last successful code if input is empty
-    if (!code || code.length !== 6) {
-      code = getLastSyncCode() || '';
-    }
-
-    if (!code || code.length !== 6) {
-      showToast('No valid sync code to copy.', 'warning');
+    if (!link) {
+      showToast('No sync link available to copy.', 'warning');
       return;
     }
     
-    code = code.toUpperCase();
-    if (input) input.value = code;
-
-    // Construct link
-    const link = `${window.location.origin}${window.location.pathname}?sync=${code}`;
-    
     if (navigator.clipboard) {
       navigator.clipboard.writeText(link)
-        .then(() => showToast(`✓ Sync link copied: ${code}`, 'success'))
+        .then(() => showToast(`✓ Sync link copied!`, 'success'))
         .catch(() => showToast('Failed to copy link.', 'error'));
     }
   });
+
+  /**
+   * Updates the read-only sync link field based on current code
+   */
+  function updateSyncLinkField(code) {
+    const linkField = document.getElementById('sync-link-field');
+    if (!linkField) return;
+    
+    if (code && code.trim().length === 6) {
+      const link = `${window.location.origin}${window.location.pathname}?sync=${code.trim().toUpperCase()}`;
+      linkField.value = link;
+    } else {
+      linkField.value = '';
+    }
+  }
+
+  // Initial link field update
+  updateSyncLinkField(syncCodeInput.value);
 
   handleDeepLink();
 }
