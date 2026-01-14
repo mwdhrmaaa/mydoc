@@ -86,16 +86,30 @@ export async function uploadProject(documents) {
     data: dataToUpload
   };
 
+  let jsonBlobError = null;
+
   // Try JsonBlob first (Very stable)
   try {
     return await uploadToJsonBlob(payload);
   } catch (err) {
+    jsonBlobError = err.message;
     console.warn('JsonBlob failed, trying npoint fallback:', err);
+    
     // Fallback to npoint
     try {
       return await uploadToNPoint(payload);
     } catch (npointErr) {
-      throw new Error(`All cloud servers are busy. Please try again in a few minutes. (${npointErr.message})`);
+      console.error('All cloud sync attempts failed.');
+      
+      // Construct a very helpful error message
+      let msg = "Sync servers are currently unreachable from your browser.";
+      if (jsonBlobError.includes('413') || npointErr.message.includes('413')) {
+        msg = "Your documents are too large for the cloud storage limit (128KB).";
+      } else {
+        msg = `Sync failed. Primary: ${jsonBlobError}, Fallback: ${npointErr.message}.`;
+      }
+      
+      throw new Error(msg);
     }
   }
 }
@@ -107,26 +121,32 @@ async function uploadToJsonBlob(data) {
   return retryFetch(async () => {
     const response = await fetch(JSONBLOB_API, {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
 
-    if (!response.ok) throw new Error(`JsonBlob error: ${response.status}`);
+    if (!response.ok) throw new Error(`Status ${response.status}`);
 
     // JsonBlob returns ID in Location header
     const location = response.headers.get('Location');
-    if (!location) {
-      // Some browsers/proxies might not expose Location, try fallback if possible
-      const result = await response.json();
-      return (result.id || result.binId).slice(-6).toUpperCase();
+    if (location) {
+      const parts = location.split('/');
+      return parts[parts.length - 1].slice(-6).toUpperCase();
     }
     
-    const parts = location.split('/');
-    const id = parts[parts.length - 1];
-    return id.slice(-6).toUpperCase();
+    // Fallback: Try reading body ONLY if it exists and looks like JSON
+    try {
+      const text = await response.text();
+      if (text && text.trim().startsWith('{')) {
+        const result = JSON.parse(text);
+        const id = result.id || result.binId;
+        if (id) return id.slice(-6).toUpperCase();
+      }
+    } catch (e) {}
+    
+    // If we're here, it means we got 201 Created but can't find the ID due to CORS or empty body
+    // This is common on JsonBlob. We'll treat it as a failure to move to next backend.
+    throw new Error("Could not retrieve sync ID (CORS restriction)");
   });
 }
 
@@ -141,12 +161,15 @@ async function uploadToNPoint(data) {
       body: JSON.stringify(data)
     });
 
-    if (!response.ok) throw new Error(`npoint error: ${response.status}`);
+    if (!response.ok) throw new Error(`Status ${response.status}`);
+    
     const result = await response.json();
     const id = result.binId || result.id;
+    if (!id) throw new Error("Invalid response");
     return id.slice(-6).toUpperCase();
   });
 }
+
 
 /**
  * Downloads documents using a code
