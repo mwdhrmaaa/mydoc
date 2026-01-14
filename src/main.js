@@ -68,6 +68,7 @@ function init() {
   const lastCode = getLastSyncCode();
   if (lastCode) {
     syncCodeInput.value = lastCode;
+    updateSyncLinkField(lastCode); // Fill link field immediately
     const lastTime = getLastSyncTime();
     if (lastTime) {
       syncCodeInput.placeholder = `Last synced: ${formatLastSyncTime(lastTime)}`;
@@ -359,7 +360,10 @@ async function handleDeepLink() {
     const syncCodeInput = document.getElementById('sync-code');
     const syncDownloadBtn = document.getElementById('sync-download-btn');
     
-    if (syncCodeInput) syncCodeInput.value = code;
+    if (syncCodeInput) {
+      syncCodeInput.value = code;
+      updateSyncLinkField(code); // Fill link field
+    }
     
     // Smooth delay to let the app load first
     setTimeout(async () => {
