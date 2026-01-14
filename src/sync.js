@@ -1,4 +1,5 @@
-// Primary Backend: npoint.io
+// Cloud Backends
+const JSONBLOB_API = 'https://jsonblob.com/api/jsonBlob';
 const NPOINT_API = 'https://api.npoint.io';
 
 /**
@@ -79,33 +80,71 @@ export async function uploadProject(documents) {
   }
 
   const payload = {
-    version: '1.4',
+    version: '1.5',
     timestamp: new Date().toISOString(),
     isCompressed,
     data: dataToUpload
   };
 
+  // Try JsonBlob first (Very stable)
+  try {
+    return await uploadToJsonBlob(payload);
+  } catch (err) {
+    console.warn('JsonBlob failed, trying npoint fallback:', err);
+    // Fallback to npoint
+    try {
+      return await uploadToNPoint(payload);
+    } catch (npointErr) {
+      throw new Error(`All cloud servers are busy. Please try again in a few minutes. (${npointErr.message})`);
+    }
+  }
+}
+
+/**
+ * Upload to JsonBlob.com
+ */
+async function uploadToJsonBlob(data) {
   return retryFetch(async () => {
-    const response = await fetch(`${NPOINT_API}/bins`, {
+    const response = await fetch(JSONBLOB_API, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(data)
     });
 
-    if (!response.ok) {
-      const status = response.status;
-      if (status === 413) {
-        throw new Error('Document group is too large for the cloud (Limit 128KB). Try deleting some old documents.');
-      }
-      throw new Error(`Cloud server error (${status}). Please try again later.`);
-    }
+    if (!response.ok) throw new Error(`JsonBlob error: ${response.status}`);
 
+    // JsonBlob returns ID in Location header
+    const location = response.headers.get('Location');
+    if (!location) {
+      // Some browsers/proxies might not expose Location, try fallback if possible
+      const result = await response.json();
+      return (result.id || result.binId).slice(-6).toUpperCase();
+    }
+    
+    const parts = location.split('/');
+    const id = parts[parts.length - 1];
+    return id.slice(-6).toUpperCase();
+  });
+}
+
+/**
+ * Upload to npoint.io (Backup)
+ */
+async function uploadToNPoint(data) {
+  return retryFetch(async () => {
+    const response = await fetch(`${NPOINT_API}/bins`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) throw new Error(`npoint error: ${response.status}`);
     const result = await response.json();
-    const fullId = result.binId || result.id;
-    return fullId.slice(-6).toUpperCase();
+    const id = result.binId || result.id;
+    return id.slice(-6).toUpperCase();
   });
 }
 
@@ -114,20 +153,33 @@ export async function uploadProject(documents) {
  */
 export async function downloadProject(code) {
   if (!code || code.length !== 6) throw new Error('Code must be 6 characters.');
+  const lowerCode = code.toLowerCase();
   
-  return retryFetch(async () => {
-    const response = await fetch(`${NPOINT_API}/bins/${code.toLowerCase()}`, {
+  // Try JsonBlob first
+  try {
+    const response = await fetch(`${JSONBLOB_API}/${lowerCode}`, {
       headers: { 'Accept': 'application/json' }
     });
-
-    if (!response.ok) {
-      throw new Error(response.status === 404 ? 'Invalid or expired code.' : 'Cloud server issue.');
+    if (response.ok) {
+      return await processDownload(await response.json());
     }
+  } catch (e) {
+    console.warn('JsonBlob download failed, trying npoint:', e);
+  }
 
-    const payload = await response.json();
-    return await processDownload(payload);
-  });
+  // Try npoint
+  try {
+    const response = await fetch(`${NPOINT_API}/bins/${lowerCode}`, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (response.ok) {
+      return await processDownload(await response.json());
+    }
+  } catch (e) {}
+
+  throw new Error('Invalid code or cloud data not found.');
 }
+
 
 /**
  * Process downloaded data (Array or Compressed Object)
