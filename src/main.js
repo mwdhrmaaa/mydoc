@@ -126,41 +126,10 @@ function init() {
     typewriterModeBtn.classList.toggle('active', isTypewriterMode);
   });
 
-  // Sync Logic
-  async function triggerAutoSync(silent = false) {
-    const docs = storage.getDocuments();
-    if (docs.length === 0) return;
-    
-    syncUploadBtn.disabled = true;
-    syncUploadBtn.classList.add('loading');
-    if (!silent) showToast('Uploading project...', 'info');
-    
-    try {
-      const code = await uploadProject(docs);
-      syncCodeInput.value = code;
-      saveLastSyncCode(code);
-      updateSyncLinkField(code); // Update link field
-      
-      if (!silent) showToast(`✓ Uploaded! Code: ${code}`, 'success');
-      
-      // Auto-copy to clipboard only if manual or specifically needed
-      if (!silent && navigator.clipboard) {
-        navigator.clipboard.writeText(code).catch(() => {});
-      }
-    } catch (err) {
-      if (!silent) showToast(err.message || 'Upload failed.', 'error');
-      console.error('Auto-sync error:', err);
-    } finally {
-      syncUploadBtn.disabled = false;
-      syncUploadBtn.classList.remove('loading');
-    }
-  }
-
   syncUploadBtn.addEventListener('click', () => triggerAutoSync(false));
 
   syncDownloadBtn.addEventListener('click', async () => {
     const code = syncCodeInput.value.trim();
-    
     if (!code) {
       showToast('Please enter a project code.', 'warning');
       syncCodeInput.focus();
@@ -185,8 +154,6 @@ function init() {
 
     try {
       const cloudDocs = await downloadProject(code);
-      
-      // Simple merge by ID
       const merged = [...cloudDocs];
       localDocs.forEach(local => {
         if (!merged.find(m => m.id === local.id)) {
@@ -196,14 +163,13 @@ function init() {
 
       storage.saveDocuments(merged);
       saveLastSyncCode(code);
-      updateSyncLinkField(code); // Update link field
+      updateSyncLinkField(code);
       renderDocList(merged);
       if (merged.length > 0) loadDocument(merged[0].id);
       
       showToast(`✓ Synced ${cloudDocs.length} document(s)!`, 'success');
     } catch (err) {
-      showToast(err.message || 'Download failed. Check code and connection.', 'error');
-      console.error('Download error:', err);
+      showToast(err.message || 'Download failed.', 'error');
     } finally {
       syncDownloadBtn.disabled = false;
       syncDownloadBtn.classList.remove('loading');
@@ -215,41 +181,73 @@ function init() {
   });
 
   const syncCopyLinkBtn = document.getElementById('sync-copy-link-btn');
-  syncCopyLinkBtn.addEventListener('click', () => {
-    const linkField = document.getElementById('sync-link-field');
-    const link = linkField ? linkField.value : '';
-    
-    if (!link) {
-      showToast('No sync link available to copy.', 'warning');
-      return;
-    }
-    
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(link)
-        .then(() => showToast(`✓ Sync link copied!`, 'success'))
-        .catch(() => showToast('Failed to copy link.', 'error'));
-    }
-  });
-
-  /**
-   * Updates the read-only sync link field based on current code
-   */
-  function updateSyncLinkField(code) {
-    const linkField = document.getElementById('sync-link-field');
-    if (!linkField) return;
-    
-    if (code && code.trim().length === 6) {
-      const link = `${window.location.origin}${window.location.pathname}?sync=${code.trim().toUpperCase()}`;
-      linkField.value = link;
-    } else {
-      linkField.value = '';
-    }
+  if (syncCopyLinkBtn) {
+    syncCopyLinkBtn.addEventListener('click', () => {
+      const linkField = document.getElementById('sync-link-field');
+      const link = linkField ? linkField.value : '';
+      if (!link) {
+        showToast('No sync link available to copy.', 'warning');
+        return;
+      }
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(link)
+          .then(() => showToast(`✓ Sync link copied!`, 'success'))
+          .catch(() => showToast('Failed to copy link.', 'error'));
+      }
+    });
   }
 
   // Initial link field update
   updateSyncLinkField(syncCodeInput.value);
 
   handleDeepLink();
+}
+
+/**
+ * Updates the read-only sync link field based on current code
+ */
+function updateSyncLinkField(code) {
+  const linkField = document.getElementById('sync-link-field');
+  if (!linkField) return;
+  
+  if (code && code.trim().length === 6) {
+    const link = `${window.location.origin}${window.location.pathname}?sync=${code.trim().toUpperCase()}`;
+    linkField.value = link;
+  } else {
+    linkField.value = '';
+  }
+}
+
+/**
+ * Automatically uploads current project to cloud
+ */
+async function triggerAutoSync(silent = false) {
+  const docs = storage.getDocuments();
+  if (docs.length === 0) return;
+  
+  syncUploadBtn.disabled = true;
+  syncUploadBtn.classList.add('loading');
+  if (!silent) showToast('Uploading project...', 'info');
+  
+  try {
+    const code = await uploadProject(docs);
+    syncCodeInput.value = code;
+    saveLastSyncCode(code);
+    updateSyncLinkField(code); // Update link field
+    
+    if (!silent) showToast(`✓ Uploaded! Code: ${code}`, 'success');
+    
+    // Auto-copy to clipboard only if manual or specifically needed
+    if (!silent && navigator.clipboard) {
+      navigator.clipboard.writeText(code).catch(() => {});
+    }
+  } catch (err) {
+    if (!silent) showToast(err.message || 'Upload failed.', 'error');
+    console.error('Auto-sync error:', err);
+  } finally {
+    syncUploadBtn.disabled = false;
+    syncUploadBtn.classList.remove('loading');
+  }
 }
 
 /**
