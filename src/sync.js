@@ -12,6 +12,11 @@ const USE_JSONBIN = false; // Set to true if you have API key
  * @returns {Promise<string>} Base64 encoded compressed data
  */
 async function compressData(str) {
+  if (typeof CompressionStream === 'undefined') {
+    console.warn('CompressionStream not supported. Sending uncompressed.');
+    return str;
+  }
+
   const stream = new Blob([str]).stream();
   const compressedStream = stream.pipeThrough(new CompressionStream('gzip'));
   const chunks = [];
@@ -25,26 +30,54 @@ async function compressData(str) {
   
   const blob = new Blob(chunks);
   const buffer = await blob.arrayBuffer();
-  // Convert ArrayBuffer to Base64
-  return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+  
+  // Robust Base64 conversion for large files
+  return arrayBufferToBase64(buffer);
 }
 
 /**
  * Utility to decompress GZIP data from Base64
- * @param {string} base64 - Base64 encoded compressed data
+ * @param {string} data - Data to decompress
+ * @param {boolean} isCompressed - Whether the data is actually compressed
  * @returns {Promise<string>} Decompressed string
  */
-async function decompressData(base64) {
-  const binaryString = atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
+async function decompressData(data, isCompressed) {
+  if (!isCompressed) return data;
+  if (typeof DecompressionStream === 'undefined') {
+    throw new Error('This browser does not support decompression. Update your browser.');
   }
-  
+
+  const bytes = base64ToArrayBuffer(data);
   const stream = new Blob([bytes]).stream();
   const decompressedStream = stream.pipeThrough(new DecompressionStream('gzip'));
   const response = new Response(decompressedStream);
   return await response.text();
+}
+
+/**
+ * Robust ArrayBuffer to Base64
+ */
+function arrayBufferToBase64(buffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+/**
+ * Robust Base64 to ArrayBuffer
+ */
+function base64ToArrayBuffer(base64) {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes.buffer;
 }
 
 /**
@@ -53,50 +86,52 @@ async function decompressData(base64) {
  * @returns {string} 6-character uppercase code
  */
 function generateShortCode(fullId) {
-  // Take last 6 chars and convert to uppercase
   return fullId.slice(-6).toUpperCase();
 }
 
 /**
  * Retry logic for fetch requests
- * @param {Function} fetchFn - The fetch function to retry
- * @param {number} maxRetries - Maximum retry attempts
- * @returns {Promise} The fetch result
  */
 async function retryFetch(fetchFn, maxRetries = 2) {
   let lastError;
-  
   for (let i = 0; i < maxRetries; i++) {
     try {
       return await fetchFn();
     } catch (error) {
       lastError = error;
       if (i < maxRetries - 1) {
-        // Wait before retry (exponential backoff)
         await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
       }
     }
   }
-  
   throw lastError;
 }
 
 /**
  * Uploads documents to cloud storage and returns a unique 6-character code.
- * Tries JSONBin first (if enabled), falls back to npoint.
- * @param {Array} documents - The list of documents to sync.
- * @returns {Promise<string>} Unique project code.
  */
 export async function uploadProject(documents) {
   try {
     const jsonStr = JSON.stringify(documents);
-    const compressed = await compressData(jsonStr);
+    const rawSize = (jsonStr.length / 1024).toFixed(1);
     
+    let dataToUpload = jsonStr;
+    let isCompressed = false;
+
+    if (typeof CompressionStream !== 'undefined') {
+      dataToUpload = await compressData(jsonStr);
+      isCompressed = true;
+    }
+    
+    const compressedSize = (dataToUpload.length / 1024).toFixed(1);
+    console.log(`Sync Size: ${rawSize}KB -> ${compressedSize}KB (Compressed: ${isCompressed})`);
+
     const payload = {
-      version: '1.2', // Internal version bumped for compression
-      isCompressed: true,
+      version: '1.3', 
+      isCompressed,
       timestamp: new Date().toISOString(),
-      data: compressed
+      data: dataToUpload,
+      _debug: { rawSize, compressedSize }
     };
 
     // Try JSONBin first if enabled
@@ -112,24 +147,18 @@ export async function uploadProject(documents) {
     try {
       return await uploadToNPoint(payload);
     } catch (error) {
-      console.error('All upload methods failed:', error);
-      // Provide more specific error message based on the actual error
-      const errorMessage = error.message.includes('npoint error') 
-        ? `Cloud API Error: ${error.message}. Payload might still be too large or server is down.`
-        : `Upload failed: ${error.message}. Please check your connection.`;
-      throw new Error(errorMessage);
+       // Detailed 413 check
+      if (error.message.includes('413')) {
+        throw new Error(`Data is too large (${compressedSize}KB). Even with compression, it exceeds the cloud server limit of 128KB.`);
+      }
+      throw error;
     }
   } catch (err) {
-    console.error('Compression or Upload failed:', err);
+    console.error('Upload failed:', err);
     throw err;
   }
 }
 
-/**
- * Uploads data to JSONBin.io
- * @param {Object} data - The data to upload
- * @returns {Promise<string>} Sync code
- */
 async function uploadToJsonBin(data) {
   return retryFetch(async () => {
     const response = await fetch(`${JSONBIN_API}/b`, {
@@ -140,21 +169,12 @@ async function uploadToJsonBin(data) {
       },
       body: JSON.stringify(data)
     });
-
-    if (!response.ok) {
-      throw new Error(`JSONBin error: ${response.status}`);
-    }
-
+    if (!response.ok) throw new Error(`JSONBin error: ${response.status}`);
     const result = await response.json();
     return generateShortCode(result.metadata.id);
   });
 }
 
-/**
- * Uploads data to npoint.io
- * @param {Object} data - The data to upload
- * @returns {Promise<string>} Sync code
- */
 async function uploadToNPoint(data) {
   return retryFetch(async () => {
     const response = await fetch(`${NPOINT_API}/bins`, {
@@ -162,11 +182,7 @@ async function uploadToNPoint(data) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-
-    if (!response.ok) {
-      throw new Error(`npoint error: ${response.status}`);
-    }
-
+    if (!response.ok) throw new Error(`npoint error: ${response.status}`);
     const result = await response.json();
     return generateShortCode(result.binId);
   });
@@ -174,100 +190,57 @@ async function uploadToNPoint(data) {
 
 /**
  * Downloads documents from cloud storage using a unique code.
- * Tries both JSONBin and npoint until one succeeds.
- * @param {string} code - The 6-character project code.
- * @returns {Promise<Array>} List of downloaded documents.
  */
 export async function downloadProject(code) {
-  if (!code || code.length !== 6) {
-    throw new Error('Invalid code format. Code must be 6 characters.');
-  }
-
+  if (!code || code.length !== 6) throw new Error('Invalid code format.');
   const normalizedCode = code.toLowerCase();
-  let lastError;
 
-  // Try JSONBin first if enabled
+  // Try JSONBin
   if (USE_JSONBIN) {
     try {
       return await processDownload(await downloadFromJsonBin(normalizedCode));
-    } catch (error) {
-      console.warn('JSONBin download failed, trying npoint:', error);
-      lastError = error;
-    }
+    } catch (e) {}
   }
 
   // Try npoint
   try {
     return await processDownload(await downloadFromNPoint(normalizedCode));
-  } catch (error) {
-    lastError = error;
+  } catch (err) {
+    throw new Error('Invalid code or cloud server issue.');
   }
-
-  // If both failed
-  console.error('All download methods failed:', lastError);
-  throw new Error('Invalid code or network error. Please check and try again.');
 }
 
-/**
- * Processes downloaded payload, handles decompression if needed.
- * @param {Object} payload - The downloaded data
- * @returns {Promise<Array>} List of documents
- */
 async function processDownload(payload) {
   if (!payload) return [];
-  
-  // If it's a legacy array (uncompressed)
   if (Array.isArray(payload)) return payload;
-  
-  // If it's a legacy object with documents field
   if (payload.documents && Array.isArray(payload.documents)) return payload.documents;
   
-  // Handle compressed format
-  if (payload.isCompressed && payload.data) {
+  if (payload.data) {
     try {
-      const decompressed = await decompressData(payload.data);
+      const decompressed = await decompressData(payload.data, payload.isCompressed);
       return JSON.parse(decompressed);
     } catch (err) {
-      console.error('Decompression failed:', err);
-      throw new Error('Failed to decompress data. The code might be corrupted.');
+      throw new Error('Failed to decompress data.');
     }
   }
-  
   return [];
 }
 
-/**
- * Downloads from JSONBin.io
- * @param {string} code - The sync code
- * @returns {Promise<Object>} Response payload
- */
 async function downloadFromJsonBin(code) {
   return retryFetch(async () => {
     const response = await fetch(`${JSONBIN_API}/b/${code}`);
-    
-    if (!response.ok) {
-      throw new Error(`JSONBin error: ${response.status}`);
-    }
-
+    if (!response.ok) throw new Error(`JSONBin error: ${response.status}`);
     const result = await response.json();
     return result.record || result;
   });
 }
 
-/**
- * Downloads from npoint.io
- * @param {string} code - The sync code
- * @returns {Promise<Object>} Response payload
- */
 async function downloadFromNPoint(code) {
   return retryFetch(async () => {
     const response = await fetch(`${NPOINT_API}/bins/${code}`);
-    
-    if (!response.ok) {
-      throw new Error(`npoint error: ${response.status}`);
-    }
-
+    if (!response.ok) throw new Error(`npoint error: ${response.status}`);
     return await response.json();
   });
 }
+
 
