@@ -180,6 +180,32 @@ function init() {
     updateSyncLinkField(e.target.value);
   });
 
+  const syncLinkField = document.getElementById('sync-link-field');
+  if (syncLinkField) {
+    syncLinkField.addEventListener('input', (e) => {
+      const value = e.target.value.trim();
+      if (!value) return;
+
+      // Detect if it's a full URL with ?sync=CODE
+      try {
+        const url = new URL(value);
+        const code = url.searchParams.get('sync');
+        if (code && code.length === 6) {
+          syncCodeInput.value = code.toUpperCase();
+          updateSyncLinkField(code);
+          showToast(`Link detected! Synching code: ${code.toUpperCase()}`, 'info');
+          
+          // Trigger download automatically
+          setTimeout(() => {
+            syncDownloadBtn.click();
+          }, 300);
+        }
+      } catch (err) {
+        // Not a URL or invalid URL, ignore
+      }
+    });
+  }
+
   const syncCopyLinkBtn = document.getElementById('sync-copy-link-btn');
   if (syncCopyLinkBtn) {
     syncCopyLinkBtn.addEventListener('click', () => {
