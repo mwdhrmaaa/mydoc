@@ -111,7 +111,13 @@ body, html {
 }
 
 .sync-panel {
-  padding: 0 24px 20px;
+  padding: 0 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sync-section {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -142,6 +148,18 @@ body, html {
   outline: none;
   font-family: var(--font-main);
   transition: var(--transition-smooth);
+}
+
+#sync-link-field {
+  cursor: default;
+  font-size: 0.7rem;
+  opacity: 0.7;
+  background: rgba(255, 255, 255, 0.01);
+  text-overflow: ellipsis;
+}
+
+#sync-link-field:focus {
+  border-color: var(--border-color);
 }
 
 .sync-input-group input:focus {
