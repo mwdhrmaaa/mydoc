@@ -186,22 +186,28 @@ function init() {
       const value = e.target.value.trim();
       if (!value) return;
 
-      // Detect if it's a full URL with ?sync=CODE
-      try {
-        const url = new URL(value);
-        const code = url.searchParams.get('sync');
-        if (code && code.length === 6) {
-          syncCodeInput.value = code.toUpperCase();
-          updateSyncLinkField(code);
-          showToast(`Link detected! Synching code: ${code.toUpperCase()}`, 'info');
-          
-          // Trigger download automatically
-          setTimeout(() => {
+      // Robust extraction using regex
+      // Matches ?sync= followed by 6 alphanumeric characters
+      const syncMatch = value.match(/[?&]sync=([a-zA-Z0-9]{6})/);
+      
+      if (syncMatch && syncMatch[1]) {
+        const code = syncMatch[1].toUpperCase();
+        syncCodeInput.value = code;
+        updateSyncLinkField(code);
+        showToast(`✓ Link detected! Code: ${code}`, 'info');
+        
+        // Clear link field to show it was processed
+        setTimeout(() => {
+          syncLinkField.placeholder = "Link processed. Synching...";
+          syncLinkField.value = ""; 
+        }, 100);
+
+        // Trigger download automatically
+        setTimeout(() => {
+          if (syncDownloadBtn) {
             syncDownloadBtn.click();
-          }, 300);
-        }
-      } catch (err) {
-        // Not a URL or invalid URL, ignore
+          }
+        }, 500);
       }
     });
   }
