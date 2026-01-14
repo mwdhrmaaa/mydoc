@@ -1,5 +1,12 @@
 import { storage } from './storage.js';
 import { uploadProject, downloadProject } from './sync.js';
+import { 
+  saveLastSyncCode, 
+  getLastSyncCode, 
+  getLastSyncTime, 
+  validateSyncCode,
+  formatLastSyncTime 
+} from './sync-storage.js';
 
 let currentDocId = null; // Currently active document ID
 let saveTimeout = null; // Timeout for auto-save debouncing
@@ -28,6 +35,21 @@ const syncCodeInput = document.getElementById('sync-code');
 const syncUploadBtn = document.getElementById('sync-upload-btn');
 const syncDownloadBtn = document.getElementById('sync-download-btn');
 
+// Toast Notification System
+function showToast(message, type = 'info') {
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  
+  setTimeout(() => toast.classList.add('show'), 100);
+  
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
 // Initialize
 /**
  * Initializes the application, loads documents, and sets up event listeners.
@@ -40,6 +62,16 @@ function init() {
     loadDocument(docs[0].id);
   } else {
     createNewDocument();
+  }
+
+  // Load last sync code if available
+  const lastCode = getLastSyncCode();
+  if (lastCode) {
+    syncCodeInput.value = lastCode;
+    const lastTime = getLastSyncTime();
+    if (lastTime) {
+      syncCodeInput.placeholder = `Last synced: ${formatLastSyncTime(lastTime)}`;
+    }
   }
 
   // Register Service Worker
@@ -96,17 +128,31 @@ function init() {
   // Sync Logic
   syncUploadBtn.addEventListener('click', async () => {
     const docs = storage.getDocuments();
-    if (docs.length === 0) return alert('No documents to sync.');
+    if (docs.length === 0) {
+      showToast('No documents to sync.', 'warning');
+      return;
+    }
     
     syncUploadBtn.disabled = true;
     syncUploadBtn.classList.add('loading');
+    showToast('Uploading project...', 'info');
     
     try {
       const code = await uploadProject(docs);
       syncCodeInput.value = code;
-      alert(`Project Uploaded! Your Code: ${code}\nKeep this code to sync on other devices.`);
+      saveLastSyncCode(code);
+      
+      showToast(`✓ Uploaded! Code: ${code}`, 'success');
+      
+      // Copy to clipboard if available
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(code)
+          .then(() => showToast('Code copied to clipboard!', 'info'))
+          .catch(() => {});
+      }
     } catch (err) {
-      alert('Upload failed. Please try again.');
+      showToast(err.message || 'Upload failed. Please try again.', 'error');
+      console.error('Upload error:', err);
     } finally {
       syncUploadBtn.disabled = false;
       syncUploadBtn.classList.remove('loading');
@@ -115,16 +161,31 @@ function init() {
 
   syncDownloadBtn.addEventListener('click', async () => {
     const code = syncCodeInput.value.trim();
-    if (!code) return alert('Please enter a project code.');
+    
+    if (!code) {
+      showToast('Please enter a project code.', 'warning');
+      syncCodeInput.focus();
+      return;
+    }
 
-    if (!confirm('This will merge cloud documents with your current ones. Continue?')) return;
+    if (!validateSyncCode(code)) {
+      showToast('Invalid code format. Must be 6 characters.', 'error');
+      return;
+    }
+
+    const localDocs = storage.getDocuments();
+    if (localDocs.length > 0) {
+      if (!confirm('This will merge cloud documents with your current ones. Continue?')) {
+        return;
+      }
+    }
 
     syncDownloadBtn.disabled = true;
     syncDownloadBtn.classList.add('loading');
+    showToast('Downloading project...', 'info');
 
     try {
       const cloudDocs = await downloadProject(code);
-      const localDocs = storage.getDocuments();
       
       // Simple merge by ID
       const merged = [...cloudDocs];
@@ -135,12 +196,14 @@ function init() {
       });
 
       storage.saveDocuments(merged);
+      saveLastSyncCode(code);
       renderDocList(merged);
       if (merged.length > 0) loadDocument(merged[0].id);
       
-      alert('Sync Successful!');
+      showToast(`✓ Synced ${cloudDocs.length} document(s)!`, 'success');
     } catch (err) {
-      alert('Download failed. Check your code and connection.');
+      showToast(err.message || 'Download failed. Check code and connection.', 'error');
+      console.error('Download error:', err);
     } finally {
       syncDownloadBtn.disabled = false;
       syncDownloadBtn.classList.remove('loading');
